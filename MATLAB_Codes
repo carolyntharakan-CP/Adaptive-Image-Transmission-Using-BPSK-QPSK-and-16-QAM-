@@ -1,0 +1,4 @@
+- Implement digital image transmission using MATLAB
+- Add modulation and demodulation simulation scripts
+- Develop adaptive modulation for image communication
+- Include BPSK, QPSK and 16-QAM implementations
