@@ -1,0 +1,120 @@
+clc;
+clear;
+close all;
+
+%% Read Image
+
+img = imread('Image/test_image.jpg');
+
+if size(img,3)==3
+    grayImg = rgb2gray(img);
+else
+    grayImg = img;
+end
+
+grayImg = imresize(grayImg,[256 256]);
+
+%% Display Original Image
+
+figure;
+imshow(grayImg);
+title('Original Grayscale Image');
+
+%% Convert Image to Binary
+
+imgVector = grayImg(:);
+
+binaryMatrix = dec2bin(imgVector,8) - '0';
+
+txBits = reshape(binaryMatrix.',[],1);
+
+disp('Number of Pixels:');
+disp(length(imgVector));
+
+disp('Number of Transmitted Bits:');
+disp(length(txBits));
+
+%% BPSK Modulation
+
+bpskSignal = 2*txBits - 1;
+
+disp('First 20 BPSK Symbols:');
+disp(bpskSignal(1:20)');
+
+%% BPSK Constellation
+
+figure;
+plot(bpskSignal(1:5000),zeros(5000,1),'.');
+grid on;
+title('BPSK Constellation');
+xlabel('In-Phase');
+ylabel('Quadrature');
+
+%% AWGN Channel
+
+snrValue = 10;   % dB
+
+signalPower = mean(bpskSignal.^2);
+
+noisePower = signalPower/(10^(snrValue/10));
+
+noise = sqrt(noisePower)*randn(size(bpskSignal));
+
+rxSignal = bpskSignal + noise;
+
+%% Received Signal
+
+figure;
+plot(rxSignal(1:200));
+grid on;
+title('Received BPSK Signal with AWGN');
+xlabel('Sample Number');
+ylabel('Amplitude');
+
+%% Received BPSK Constellation
+
+figure;
+plot(rxSignal(1:5000),zeros(5000,1),'.');
+grid on;
+title('Received BPSK Constellation');
+xlabel('In-Phase');
+ylabel('Quadrature');
+
+%% BPSK Demodulation
+
+rxBits = double(rxSignal > 0);
+
+%% BER Calculation
+
+numErrors = sum(txBits ~= rxBits);
+
+BER = numErrors/length(txBits);
+
+fprintf('Number of Errors = %d\n',numErrors);
+fprintf('BER = %f\n',BER);
+
+%% Reconstruct Image
+
+rxBinaryMatrix = reshape(rxBits,8,[])';
+
+rxPixels = uint8(bin2dec(char(rxBinaryMatrix + '0')));
+
+rxImage = reshape(rxPixels,size(grayImg));
+
+%% Display Original and Received Images
+
+figure;
+
+subplot(1,2,1);
+imshow(grayImg);
+title('Original Image');
+
+subplot(1,2,2);
+imshow(rxImage);
+title('Received Image');
+
+%% Display BER on Command Window
+
+disp('--------------------------------');
+disp(['BPSK BER = ', num2str(BER)]);
+disp('--------------------------------');

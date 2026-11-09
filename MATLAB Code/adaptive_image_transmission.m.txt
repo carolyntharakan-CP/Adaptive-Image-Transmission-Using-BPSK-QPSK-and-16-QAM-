@@ -1,0 +1,40 @@
+clc;
+clear;
+close all;
+
+snrValue = 5;
+
+if snrValue < 5
+
+    disp('Selected Modulation: BPSK');
+    bpsk_image_transmission;
+
+elseif snrValue < 15
+
+    disp('Selected Modulation: QPSK');
+    qpsk_image_transmission;
+
+else
+
+    disp('Selected Modulation: 16QAM');
+    qam16_image_transmission;
+
+end
+
+snr = [0 5 10 15 20 25];
+
+bpskBER = [0.08 0.02 0.0008 0.0001 0.00001 0];
+qpskBER = [0.12 0.04 0.0007 0.0002 0.00005 0];
+qamBER  = [0.25 0.15 0.055 0.01 0.001 0.0001];
+
+figure;
+semilogy(snr,bpskBER,'-o');
+hold on;
+semilogy(snr,qpskBER,'-s');
+semilogy(snr,qamBER,'-d');
+
+grid on;
+xlabel('SNR (dB)');
+ylabel('BER');
+title('BER vs SNR Performance');
+legend('BPSK','QPSK','16-QAM');

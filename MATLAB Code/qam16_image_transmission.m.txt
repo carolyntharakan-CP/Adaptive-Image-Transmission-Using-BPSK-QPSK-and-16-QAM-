@@ -1,0 +1,165 @@
+clc;
+clear;
+close all;
+
+%% Read Image
+
+img = imread('Image/test_image.jpg');
+
+if size(img,3)==3
+    grayImg = rgb2gray(img);
+else
+    grayImg = img;
+end
+
+grayImg = imresize(grayImg,[256 256]);
+
+figure;
+imshow(grayImg);
+title('Original Image');
+
+
+%% Convert Image to Binary
+
+imgVector = grayImg(:);
+binaryMatrix = dec2bin(imgVector,8) - '0';
+txBits = reshape(binaryMatrix.',[],1);
+
+%% Group bits into 4-bit symbols
+
+if mod(length(txBits),4) ~= 0
+    txBits = [txBits; zeros(4-mod(length(txBits),4),1)];
+end
+
+bitGroups = reshape(txBits,4,[])';
+
+disp('First 5 Bit Groups');
+disp(bitGroups(1:5,:));
+
+%% 16-QAM Modulation
+
+qamSignal = complex(zeros(size(bitGroups,1),1));
+
+for k = 1:size(bitGroups,1)
+
+    bits = bitGroups(k,:);
+
+    % I component
+    if isequal(bits(1:2),[0 0])
+        I = -3;
+    elseif isequal(bits(1:2),[0 1])
+        I = -1;
+    elseif isequal(bits(1:2),[1 1])
+        I = 1;
+    else
+        I = 3;
+    end
+
+    % Q component
+    if isequal(bits(3:4),[0 0])
+        Q = -3;
+    elseif isequal(bits(3:4),[0 1])
+        Q = -1;
+    elseif isequal(bits(3:4),[1 1])
+        Q = 1;
+    else
+        Q = 3;
+    end
+
+    qamSignal(k) = I + 1i*Q;
+
+end
+
+disp('First 10 16-QAM Symbols');
+disp(qamSignal(1:10));
+
+figure;
+plot(real(qamSignal(1:5000)),imag(qamSignal(1:5000)),'.');
+grid on;
+title('16-QAM Constellation');
+xlabel('In-Phase');
+ylabel('Quadrature');
+
+
+%% AWGN Channel
+
+snrValue = 10;
+
+signalPower = mean(abs(qamSignal).^2);
+
+noisePower = signalPower/(10^(snrValue/10));
+
+noise = sqrt(noisePower/2) * ...
+       (randn(size(qamSignal)) + 1i*randn(size(qamSignal)));
+
+rxSignal = qamSignal + noise;
+
+figure;
+plot(real(rxSignal(1:5000)),imag(rxSignal(1:5000)),'.');
+grid on;
+title('Received 16-QAM Constellation');
+xlabel('In-Phase');
+ylabel('Quadrature');
+
+%% 16-QAM Demodulation
+
+rxBits = zeros(4*length(rxSignal),1);
+
+for k = 1:length(rxSignal)
+
+    I = real(rxSignal(k));
+    Q = imag(rxSignal(k));
+
+    % I bits
+    if I < -2
+        Ibits = [0 0];
+    elseif I < 0
+        Ibits = [0 1];
+    elseif I < 2
+        Ibits = [1 1];
+    else
+        Ibits = [1 0];
+    end
+
+    % Q bits
+    if Q < -2
+        Qbits = [0 0];
+    elseif Q < 0
+        Qbits = [0 1];
+    elseif Q < 2
+        Qbits = [1 1];
+    else
+        Qbits = [1 0];
+    end
+
+    rxBits(4*k-3:4*k) = [Ibits Qbits]';
+
+end
+
+%% BER
+
+numErrors = sum(txBits ~= rxBits);
+
+BER = numErrors / length(txBits);
+
+fprintf('Number of Errors = %d\n',numErrors);
+fprintf('BER = %f\n',BER);
+
+%% Reconstruct Image
+
+rxBinaryMatrix = reshape(rxBits,8,[])';
+
+rxPixels = uint8(bin2dec(char(rxBinaryMatrix + '0')));
+
+rxImage = reshape(rxPixels,size(grayImg));
+
+figure;
+
+subplot(1,2,1);
+imshow(grayImg);
+title('Original Image');
+
+subplot(1,2,2);
+imshow(rxImage);
+title('16-QAM Received Image');
+

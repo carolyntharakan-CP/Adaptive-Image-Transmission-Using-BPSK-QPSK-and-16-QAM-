@@ -1,0 +1,157 @@
+clc;
+clear;
+close all;
+
+%% Read Image
+
+img = imread('Image/test_image.jpg');
+
+if size(img,3)==3
+    grayImg = rgb2gray(img);
+else
+    grayImg = img;
+end
+
+grayImg = imresize(grayImg,[256 256]);
+
+%% Convert Image to Binary
+
+imgVector = grayImg(:);
+
+binaryMatrix = dec2bin(imgVector,8) - '0';
+
+txBits = reshape(binaryMatrix.',[],1);
+
+disp('Number of Pixels:');
+disp(length(imgVector));
+
+disp('Number of Transmitted Bits:');
+disp(length(txBits));
+
+%% Group Bits into Pairs
+
+if mod(length(txBits),2) ~= 0
+    txBits = [txBits; 0];
+end
+
+bitPairs = reshape(txBits,2,[])';
+
+%% QPSK Modulation
+
+qpskSignal = zeros(size(bitPairs,1),1);
+
+for k = 1:size(bitPairs,1)
+
+    if isequal(bitPairs(k,:),[0 0])
+
+        qpskSignal(k) = 1 + 1i;
+
+    elseif isequal(bitPairs(k,:),[0 1])
+
+        qpskSignal(k) = -1 + 1i;
+
+    elseif isequal(bitPairs(k,:),[1 1])
+
+        qpskSignal(k) = -1 - 1i;
+
+    else
+
+        qpskSignal(k) = 1 - 1i;
+
+    end
+
+end
+
+disp('First 10 QPSK Symbols');
+disp(qpskSignal(1:10));
+
+%% QPSK Constellation
+
+figure;
+plot(real(qpskSignal(1:5000)),imag(qpskSignal(1:5000)),'.');
+grid on;
+title('QPSK Constellation');
+xlabel('In-Phase');
+ylabel('Quadrature');
+
+%% AWGN Channel
+
+snrValue = 10;
+
+signalPower = mean(abs(qpskSignal).^2);
+
+noisePower = signalPower/(10^(snrValue/10));
+
+noise = sqrt(noisePower/2) .* ...
+       (randn(size(qpskSignal)) + 1i*randn(size(qpskSignal)));
+
+rxSignal = qpskSignal + noise;
+
+%% Received Constellation
+
+figure;
+plot(real(rxSignal(1:5000)),imag(rxSignal(1:5000)),'.');
+grid on;
+title('Received QPSK Constellation');
+xlabel('In-Phase');
+ylabel('Quadrature');
+
+%% QPSK Demodulation
+
+rxBits = zeros(2*length(rxSignal),1);
+
+for k = 1:length(rxSignal)
+
+    I = real(rxSignal(k));
+    Q = imag(rxSignal(k));
+
+    if I > 0 && Q > 0
+
+        bits = [0 0];
+
+    elseif I < 0 && Q > 0
+
+        bits = [0 1];
+
+    elseif I < 0 && Q < 0
+
+        bits = [1 1];
+
+    else
+
+        bits = [1 0];
+
+    end
+
+    rxBits(2*k-1:2*k) = bits';
+
+end
+
+%% BER Calculation
+
+numErrors = sum(txBits ~= rxBits);
+
+BER = numErrors / length(txBits);
+
+fprintf('Number of Errors = %d\n',numErrors);
+fprintf('BER = %f\n',BER);
+
+%% Reconstruct Image
+
+rxBinaryMatrix = reshape(rxBits,8,[])';
+
+rxPixels = uint8(bin2dec(char(rxBinaryMatrix + '0')));
+
+rxImage = reshape(rxPixels,size(grayImg));
+
+%% Display Images
+
+figure;
+
+subplot(1,2,1);
+imshow(grayImg);
+title('Original Image');
+
+subplot(1,2,2);
+imshow(rxImage);
+title('QPSK Received Image');
