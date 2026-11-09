@@ -1,0 +1,8 @@
+- Original_Image.png	
+Reference grayscale image used as the input for digital image transmission.
+- BPSK_Received_Image.png
+Reconstructed image obtained after BPSK transmission through the AWGN channel.
+- QPSK_Received_Image.png	
+Reconstructed image showing the effect of noise on QPSK-based transmission.
+- 16QAM_Received_Image.png	
+Reconstructed image illustrating the received quality after 16-QAM transmission.
